@@ -1,5 +1,6 @@
 
 import os
+import uuid
 import json
 
 from cassandra.cluster import Cluster
@@ -79,6 +80,7 @@ class TripEventByUser(BaseTripEventModel):
     user_id = columns.UUID(primary_key=True, required=True)
     event_time = columns.TimeUUID(primary_key=True, clustering_order="DESC", required=True)
     trip_id = columns.UUID(primary_key=True, clustering_order="DESC", required=True)
+    foo = columns.Text
 
 
 def main():
@@ -89,10 +91,35 @@ def main():
 
     connection.setup(['127.0.0.1'], keyspace, retry_connect=True, port=32769)
 
+    # apparently you don't do this when you're using the ORM?
+    #
     #cluster = Cluster(port=32769)
     #session = cluster.connect("keyspace")
 
-    sync_table(TripEventByUser)
+    #sync_table(TripEventByUser)
+
+    trip_event_by_user_obj = TripEventByUser()
+
+    # BaseTripEvent
+    trip_event_by_user_obj.event_id = uuid.uuid4()
+    trip_event_by_user_obj.event_type = "foo"
+    trip_event_by_user_obj.lat = 1.1
+    trip_event_by_user_obj.lng = 2.2
+    trip_event_by_user_obj.accuracy = 3.3
+    trip_event_by_user_obj.speed = 4.4
+    trip_event_by_user_obj.meta = {"meta": 5.5}
+    trip_event_by_user_obj.sdk = {"foo": "bar"}
+
+    # TripEventByUser
+    trip_event_by_user_obj.user_id = uuid.uuid4()
+    trip_event_by_user_obj.event_time = uuid.uuid1()
+    trip_event_by_user_obj.trip_id = uuid.uuid4()
+
+    # new
+    trip_event_by_user_obj.foo = "bar"
+
+    # serialize
+    trip_event_by_user_obj.save()
 
 if __name__ == '__main__':
     main()
