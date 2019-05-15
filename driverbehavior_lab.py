@@ -1,9 +1,13 @@
 
-
+import os
 import json
 
+from cassandra.cluster import Cluster
+from cassandra.cqlengine import connection
 from cassandra.cqlengine import columns
 from cassandra.cqlengine.models import Model
+from cassandra.cqlengine.management import sync_table
+
 from cassandra.util import unix_time_from_uuid1
 
 
@@ -75,3 +79,20 @@ class TripEventByUser(BaseTripEventModel):
     user_id = columns.UUID(primary_key=True, required=True)
     event_time = columns.TimeUUID(primary_key=True, clustering_order="DESC", required=True)
     trip_id = columns.UUID(primary_key=True, clustering_order="DESC", required=True)
+
+
+def main():
+    keyspace = "foo"
+
+    if os.getenv('CQLENG_ALLOW_SCHEMA_MANAGEMENT') is None:
+        os.environ['CQLENG_ALLOW_SCHEMA_MANAGEMENT'] = '1'
+
+    connection.setup(['127.0.0.1'], keyspace, retry_connect=True, port=32769)
+
+    #cluster = Cluster(port=32769)
+    #session = cluster.connect("keyspace")
+
+    sync_table(TripEventByUser)
+
+if __name__ == '__main__':
+    main()
