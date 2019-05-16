@@ -1,6 +1,7 @@
 
 import os
 import uuid
+import logging
 import json
 
 from cassandra.cluster import Cluster
@@ -8,9 +9,13 @@ from cassandra.cqlengine import connection
 from cassandra.cqlengine import columns
 from cassandra.cqlengine.models import Model
 from cassandra.cqlengine.management import sync_table
+from cassandra.cqlengine.management import create_keyspace_simple
 
 from cassandra.util import unix_time_from_uuid1
 
+
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
 
 
 class BaseTripEventModel(Model):
@@ -80,23 +85,30 @@ class TripEventByUser(BaseTripEventModel):
     user_id = columns.UUID(primary_key=True, required=True)
     event_time = columns.TimeUUID(primary_key=True, clustering_order="DESC", required=True)
     trip_id = columns.UUID(primary_key=True, clustering_order="DESC", required=True)
-    foo = columns.Text
+    foo = columns.Text()
 
 
 def main():
     keyspace = "foo"
 
+    print(TripEventByUser._columns.values())
+    print("---")
+    print(TripEventByUser()._columns.values())
+
     if os.getenv('CQLENG_ALLOW_SCHEMA_MANAGEMENT') is None:
         os.environ['CQLENG_ALLOW_SCHEMA_MANAGEMENT'] = '1'
 
-    connection.setup(['127.0.0.1'], keyspace, retry_connect=True, port=32769)
+    connection.setup(['127.0.0.1'], keyspace, retry_connect=True, port=32774)
 
-    # apparently you don't do this when you're using the ORM?
-    #
-    #cluster = Cluster(port=32769)
-    #session = cluster.connect("keyspace")
+    # this is non-destructive
+    # https://datastax.github.io/python-driver/api/cassandra/cqlengine/management.html#cassandra.cqlengine.management.create_keyspace_simple
+    create_keyspace_simple(keyspace, 1)
 
-    #sync_table(TripEventByUser)
+
+
+    # this will create the table but if the model changes it doesn't seem to update an existing instance of same
+    sync_table(TripEventByUser)
+
 
     trip_event_by_user_obj = TripEventByUser()
 
@@ -120,6 +132,7 @@ def main():
 
     # serialize
     trip_event_by_user_obj.save()
+
 
 if __name__ == '__main__':
     main()
